@@ -13,13 +13,17 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3002',
         changeOrigin: true
       },
-      '/printer': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
+      // Individual explicit proxies for common printer asset paths
+      '/assets': { target: 'http://localhost:3002', changeOrigin: true },
+      '/js': { target: 'http://localhost:3002', changeOrigin: true },
+      '/css': { target: 'http://localhost:3002', changeOrigin: true },
+      '/img': { target: 'http://localhost:3002', changeOrigin: true },
+      '/fonts': { target: 'http://localhost:3002', changeOrigin: true },
+      '/octoapp': { target: 'http://localhost:3002', changeOrigin: true },
+      '/printer': { target: 'http://localhost:3002', changeOrigin: true }
     }
   }
 })

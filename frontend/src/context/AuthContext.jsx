@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     try {
       if (isAuthenticated()) {
         const userData = await getCurrentUser()
-        setUser(userData)
+        setUser(userData.user)
       }
     } catch (error) {
       console.error('Auth check failed:', error)

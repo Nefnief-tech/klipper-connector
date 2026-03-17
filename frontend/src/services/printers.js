@@ -10,6 +10,11 @@ export const getPrinter = async (id) => {
   return response.data
 }
 
+export const getPrinterByName = async (name) => {
+  const response = await api.get(`/printers/name/${encodeURIComponent(name)}`)
+  return response.data
+}
+
 export const createPrinter = async (printerData) => {
   const response = await api.post('/printers', printerData)
   return response.data

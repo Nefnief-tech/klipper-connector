@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
         username: user.username,
         createdAt: user.createdAt
       },
-      accessToken,
+      token: accessToken,
       refreshToken
     })
   } catch (error) {
@@ -79,7 +79,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         createdAt: user.createdAt
       },
-      accessToken,
+      token: accessToken,
       refreshToken
     })
   } catch (error) {
@@ -124,7 +124,7 @@ router.get('/me', async (req, res) => {
   }
 })
 
-router.post('/refresh-token', async (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
     const { refreshToken } = req.body
 
@@ -154,7 +154,7 @@ router.post('/refresh-token', async (req, res) => {
     const newRefreshToken = generateRefreshToken(user.id)
 
     res.json({
-      accessToken: newAccessToken,
+      token: newAccessToken,
       refreshToken: newRefreshToken
     })
   } catch (error) {

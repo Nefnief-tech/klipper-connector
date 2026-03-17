@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --exec node src/server.js",
+    "dev:bun": "bun --watch src/server.js",
     "start": "node src/server.js",
+    "start:bun": "bun src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
@@ -12,6 +14,7 @@
   "dependencies": {
     "@prisma/client": "^5.7.0",
     "bcryptjs": "^2.4.3",
+    "concurrently": "^8.2.2",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -19,8 +22,9 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "http-proxy-middleware": "^2.0.6",
+    "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
-    "joi": "^17.11.0"
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",

@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: klipper-connector-db
+    environment:
+      POSTGRES_USER: kl_gateway_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: kl_gateway
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kl_gateway_user -d kl_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: klipper-connector-server
+    environment:
+      DATABASE_URL: postgresql://kl_gateway_user:${DB_PASSWORD}@db:5432/kl_gateway?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 3002
+      NODE_ENV: production
+      CORS_ORIGIN: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: klipper-connector-frontend
+    depends_on:
+      - server
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:

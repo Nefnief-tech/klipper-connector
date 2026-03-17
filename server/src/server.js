@@ -7,8 +7,9 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import authRoutes from './routes/auth.js'
 import printerRoutes from './routes/printers.js'
-import { handleProxy } from './middleware/proxy.js'
+import { createPrinterProxy } from './middleware/proxy.js'
 import { verifyToken } from './utils/jwt.js'
+import prisma from './config/database.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -16,51 +17,84 @@ const __dirname = path.dirname(__filename)
 dotenv.config()
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3002
 
 // Middleware
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  frameguard: false
+}))
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }))
 app.use(cookieParser())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
 
-// Routes
-app.use('/api', authRoutes)
-app.use('/api/printers', printerRoutes)
+// 1. Health check & Favicon
+app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
+app.get('/favicon.ico', (req, res) => res.status(204).end())
 
-app.use('/printer/:name/*', (req, res, next) => {
-  const authHeader = req.headers.authorization
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' })
+// 2. API Routes
+app.use('/api/auth', express.json(), authRoutes)
+app.use('/api/printers', express.json(), printerRoutes)
+
+// 3. Printer Proxy for HTTP requests
+app.use(async (req, res, next) => {
+  const url = req.originalUrl || req.url
+
+  if (url.startsWith('/api/') || url.startsWith('/src/') || url.startsWith('/@') || url.startsWith('/node_modules/') || url === '/main.jsx') {
+    return next()
   }
-  const token = authHeader.substring(7)
-  const decoded = verifyToken(token)
-  if (!decoded) {
-    return res.status(401).json({ error: 'Invalid or expired token' })
+
+  let printerName = null
+
+  const directMatch = url.match(/^\/printer\/([^/?#]+)/)
+  if (directMatch && !['assets', 'js', 'css', 'img', 'octoapp'].includes(directMatch[1])) {
+    printerName = decodeURIComponent(directMatch[1])
   }
-  req.userId = decoded.userId
+
+  if (!printerName) {
+    const referer = req.headers.referer || ''
+    const refMatch = referer.match(/\/printer\/([^/?#]+)/) || referer.match(/\/node\/([^/?#]+)/)
+    if (refMatch) {
+      printerName = decodeURIComponent(refMatch[1])
+    }
+  }
+
+  if (printerName) {
+    let token = req.query.token || req.cookies.token
+    if (!token && req.headers.referer && req.headers.referer.includes('token=')) {
+      try {
+        const refUrl = new URL(req.headers.referer)
+        token = refUrl.searchParams.get('token')
+      } catch (e) {}
+    }
+
+    if (token) {
+      const decoded = verifyToken(token)
+      if (decoded) {
+        if (req.query.token) {
+          res.cookie('token', token, { httpOnly: true, path: '/', maxAge: 3600000 })
+        }
+
+        req.userId = decoded.userId
+        req.params = { name: printerName }
+        console.log(`[ROUTE MATCH] ${req.method} ${url} -> Node: ${printerName}`)
+        return createPrinterProxy(req, res, next)
+      }
+    }
+    console.log(`[AUTH FAIL] ${url}`)
+  }
+
   next()
-}, handleProxy)
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// 4. Production Static Files
 if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, '../../frontend/dist')
   app.use(express.static(frontendPath))
-
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api') && !req.path.match(/^\/printer\/[^/]+/) && req.path !== '/health') {
-      res.sendFile(path.join(frontendPath, 'index.html'))
-    } else {
-      next()
-    }
-  })
+  app.get('*', (req, res) => res.sendFile(path.join(frontendPath, 'index.html')))
 }
 
 // Error handling

@@ -8,12 +8,12 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\"",
-    "dev:server": "cd server && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "npm run build:frontend",
-    "build:frontend": "cd frontend && npm run build",
-    "start": "cd server && npm start"
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:frontend\"",
+    "dev:server": "cd server && bun run dev",
+    "dev:frontend": "cd frontend && bun run dev",
+    "build": "cd frontend && bun run build",
+    "start": "cd server && bun run start",
+    "bun:start": "cd server && bun run src/server.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

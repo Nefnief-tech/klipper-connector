@@ -1,50 +1,73 @@
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import prisma from '../config/database.js'
 
+const proxyCache = new Map()
+
 export async function createPrinterProxy(req, res, next) {
   try {
-    const { name } = req.params
+    const name = req.params.name
+    if (!name) return next()
 
     const printer = await prisma.printer.findFirst({
-      where: {
-        name,
-        userId: req.userId,
-        status: 'active'
-      }
+      where: { name, userId: req.userId, status: 'active' }
     })
 
     if (!printer) {
-      return res.status(404).json({ error: 'Printer not found or inactive' })
+      return res.status(404).json({ error: `Printer "${name}" not found` })
     }
 
     const targetUrl = `${printer.hostUrl}:${printer.port}`
+    const cacheKey = `${targetUrl}-${printer.path}`
+    
+    let proxy = proxyCache.get(cacheKey)
 
-    const proxy = createProxyMiddleware({
-      target: targetUrl,
-      changeOrigin: true,
-      pathRewrite: {
-        [`^/printer/${name}`]: printer.path
-      },
-      onProxyReq: (proxyReq, req) => {
-        console.log(`Proxying ${req.method} ${req.url} to ${targetUrl}${printer.path}`)
-      },
-      onProxyRes: (proxyRes, req) => {
-        console.log(`Response from printer: ${proxyRes.statusCode}`)
-        prisma.printer.update({
-          where: { id: printer.id },
-          data: { lastAccessed: new Date() }
-        }).catch(err => console.error('Error updating lastAccessed:', err))
-      },
-      onError: (err, req, res) => {
-        console.error('Proxy error:', err)
-        res.status(502).json({ error: 'Bad gateway - printer unavailable' })
-      }
-    })
+    if (!proxy) {
+      proxy = createProxyMiddleware({
+        target: targetUrl,
+        changeOrigin: true,
+        autoRewrite: true,
+        protocolRewrite: 'http',
+        pathRewrite: (path, req) => {
+          // Identify the request context
+          const url = req.originalUrl || req.url
+          const printerPrefix = `/printer/${name}`
+          const isDirect = url.startsWith(printerPrefix)
+          
+          let subPath = path
+          if (isDirect) {
+            // Remove /printer/NAME prefix
+            subPath = path.replace(new RegExp(`^${printerPrefix}/?`), '')
+          }
+          
+          // Ensure printer base path
+          const base = printer.path === '/' ? '' : printer.path
+          
+          // Join and normalize
+          const result = (base + '/' + subPath.replace(/^\//, '')).replace(/\/+/g, '/')
+          return result || '/'
+        },
+        onProxyReq: (proxyReq, req) => {
+          // Critical: Moonraker/Mainsail often fail if these are present
+          proxyReq.removeHeader('Cookie')
+          proxyReq.removeHeader('Authorization')
+          
+          // Debug log
+          console.log(`[PROXY EXEC] ${req.method} ${req.originalUrl} -> ${targetUrl}${proxyReq.path}`)
+        },
+        onError: (err, req, res) => {
+          console.error(`[PROXY ERROR] ${name}:`, err.message)
+          if (!res.headersSent) {
+            res.status(502).json({ error: 'Printer communication failure' })
+          }
+        }
+      })
+      proxyCache.set(cacheKey, proxy)
+    }
 
-    proxy(req, res, next)
+    return proxy(req, res, next)
   } catch (error) {
-    console.error('Proxy middleware error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    console.error('Proxy setup error:', error)
+    res.status(500).json({ error: 'Internal proxy configuration error' })
   }
 }
 
