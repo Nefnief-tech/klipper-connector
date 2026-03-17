@@ -3,10 +3,15 @@ import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import authRoutes from './routes/auth.js'
 import printerRoutes from './routes/printers.js'
 import { handleProxy } from './middleware/proxy.js'
 import { verifyToken } from './utils/jwt.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 dotenv.config()
 
@@ -44,6 +49,19 @@ app.use('/printer/:name/*', (req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../../frontend/dist')
+  app.use(express.static(frontendPath))
+
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/printer') && req.path !== '/health') {
+      res.sendFile(path.join(frontendPath, 'index.html'))
+    } else {
+      next()
+    }
+  })
+}
 
 // Error handling
 app.use((err, req, res, next) => {
