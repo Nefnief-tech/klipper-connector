@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
+import authRoutes from './routes/auth.js'
 
 dotenv.config()
 
@@ -20,6 +21,8 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // Routes
+app.use('/api', authRoutes)
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
