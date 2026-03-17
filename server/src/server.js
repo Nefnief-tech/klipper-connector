@@ -55,7 +55,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendPath))
 
   app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/printer') && req.path !== '/health') {
+    if (!req.path.startsWith('/api') && !req.path.match(/^\/printer\/[^/]+/) && req.path !== '/health') {
       res.sendFile(path.join(frontendPath, 'index.html'))
     } else {
       next()

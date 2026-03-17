@@ -5,10 +5,6 @@ export async function createPrinterProxy(req, res, next) {
   try {
     const { name } = req.params
 
-    if (!req.userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
     const printer = await prisma.printer.findFirst({
       where: {
         name,
@@ -34,6 +30,10 @@ export async function createPrinterProxy(req, res, next) {
       },
       onProxyRes: (proxyRes, req) => {
         console.log(`Response from printer: ${proxyRes.statusCode}`)
+        prisma.printer.update({
+          where: { id: printer.id },
+          data: { lastAccessed: new Date() }
+        }).catch(err => console.error('Error updating lastAccessed:', err))
       },
       onError: (err, req, res) => {
         console.error('Proxy error:', err)
@@ -42,11 +42,6 @@ export async function createPrinterProxy(req, res, next) {
     })
 
     proxy(req, res, next)
-
-    await prisma.printer.update({
-      where: { id: printer.id },
-      data: { lastAccessed: new Date() }
-    })
   } catch (error) {
     console.error('Proxy middleware error:', error)
     res.status(500).json({ error: 'Internal server error' })
