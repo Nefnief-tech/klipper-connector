@@ -1,11 +1,15 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import dotenv from 'dotenv'
+
+// Load root .env for HOST_IP
+const rootEnv = dotenv.config({ path: path.resolve(__dirname, '../.env') }).parsed || {}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  // Load HOST_IP from root .env if available
-  const hostIp = env.HOST_IP || 'localhost'
+  // Use HOST_IP from root .env, env var, or default
+  const hostIp = rootEnv.HOST_IP || env.HOST_IP || 'localhost'
   const apiUrl = env.VITE_API_URL || `http://${hostIp}:3002`
   return {
   plugins: [react()],
