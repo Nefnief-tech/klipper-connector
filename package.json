@@ -8,7 +8,7 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"bun run dev:server\" \"bun run dev:frontend\"",
+    "dev": "bunx concurrently \"bun run dev:server\" \"bun run dev:frontend\"",
     "dev:server": "cd server && bun run dev",
     "dev:frontend": "cd frontend && bun run dev",
     "build": "cd frontend && bun run build",
