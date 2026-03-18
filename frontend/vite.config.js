@@ -1,8 +1,13 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  // Load HOST_IP from root .env if available
+  const hostIp = env.HOST_IP || 'localhost'
+  const apiUrl = env.VITE_API_URL || `http://${hostIp}:3002`
+  return {
   plugins: [react()],
   resolve: {
     alias: {
@@ -14,17 +19,18 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: apiUrl,
         changeOrigin: true
       },
       // Individual explicit proxies for common printer asset paths
-      '/assets': { target: 'http://localhost:3002', changeOrigin: true },
-      '/js': { target: 'http://localhost:3002', changeOrigin: true },
-      '/css': { target: 'http://localhost:3002', changeOrigin: true },
-      '/img': { target: 'http://localhost:3002', changeOrigin: true },
-      '/fonts': { target: 'http://localhost:3002', changeOrigin: true },
-      '/octoapp': { target: 'http://localhost:3002', changeOrigin: true },
-      '/printer': { target: 'http://localhost:3002', changeOrigin: true }
+      '/assets': { target: apiUrl, changeOrigin: true },
+      '/js': { target: apiUrl, changeOrigin: true },
+      '/css': { target: apiUrl, changeOrigin: true },
+      '/img': { target: apiUrl, changeOrigin: true },
+      '/fonts': { target: apiUrl, changeOrigin: true },
+      '/octoapp': { target: apiUrl, changeOrigin: true },
+      '/printer': { target: apiUrl, changeOrigin: true }
     }
+  }
   }
 })

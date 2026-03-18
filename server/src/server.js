@@ -14,10 +14,12 @@ import prisma from './config/database.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-dotenv.config()
+dotenv.config({ path: path.join(__dirname, '../../.env') })
 
 const app = express()
 const PORT = process.env.PORT || 3002
+const HOST_IP = process.env.HOST_IP || 'localhost'
+const CORS_ORIGIN = process.env.CORS_ORIGIN || `http://${HOST_IP}:5173`
 
 // Middleware
 app.use(helmet({
@@ -26,7 +28,7 @@ app.use(helmet({
   frameguard: false
 }))
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: CORS_ORIGIN,
   credentials: true
 }))
 app.use(cookieParser())

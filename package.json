@@ -13,7 +13,8 @@
     "dev:frontend": "cd frontend && bun run dev",
     "build": "cd frontend && bun run build",
     "start": "cd server && bun run start",
-    "bun:start": "cd server && bun run src/server.js"
+    "bun:start": "cd server && bun run src/server.js",
+    "prisma:generate": "prisma generate --schema=./server/prisma/schema.prisma"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
